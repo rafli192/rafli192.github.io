@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mood Swiper - Expanded Deck</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  :root {
+    --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --color-background: #fafafa;
+    --color-text-primary: #18181b;
+    --color-text-secondary: #52525b;
+    --color-text-tertiary: #a1a1aa;
+    --color-border: #e4e4e7;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body { 
+    font-family: var(--font-sans); 
+    background: var(--color-background); 
+    overflow: hidden; 
+    overscroll-behavior-y: contain; 
+  }
+
+  .app {
+    max-width: 400px;
+    margin: 0 auto;
+    padding: 24px 16px 32px;
+    height: 100vh;
+    height: 100dvh; 
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  /* Mood Selection */
+  .mood-bar {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .mood-label {
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+  }
+
+  .mood-select {
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    outline: none;
+    cursor: pointer;
+    padding: 8px 0; 
+  }
+
+  /* Card Stage */
+  .card-stage {
+    width: 100%;
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 1000px;
+  }
+
+  .card-ghost {
+    position: absolute;
+    width: 290px;
+    height: 420px;
+    border-radius: 24px;
+    background: #fff;
+    border: 1px solid var(--color-border);
+    transform: scale(0.95) translateY(10px);
+    opacity: 0.6;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+  }
+
+  .card-ghost-2 {
+    transform: scale(0.9) translateY(20px);
+    opacity: 0.3;
+  }
+
+  .card {
+    position: absolute;
+    width: 290px;
+    height: 420px;
+    border-radius: 24px;
+    cursor: grab;
+    user-select: none;
+    will-change: transform;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    border: 1px solid rgba(0,0,0,0.04);
+    touch-action: none; 
+  }
+
+  .card:active { cursor: grabbing; }
+
+  .card-header {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    padding: 24px;
+    position: relative;
+  }
+
+  .card-type-label {
+    position: absolute;
+    top: 24px;
+    left: 24px;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    font-weight: 600;
+    opacity: 0.5;
+  }
+
+  .card-emoji {
+    position: absolute;
+    top: 24px;
+    right: 24px;
+    font-size: 48px;
+    line-height: 1;
+    opacity: 0.8;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+  }
+
+  .card-name {
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.1;
+    color: rgba(0,0,0,0.9);
+    margin-bottom: 8px;
+  }
+
+  .attribute-icons {
+    display: flex;
+    gap: 8px;
+    color: rgba(0,0,0,0.6);
+  }
+
+  .attr-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px; 
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.4);
+    font-size: 16px;
+    position: relative;
+    cursor: help;
+  }
+
+  .attr-icon::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 110%;
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: capitalize;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: all 0.2s ease;
+    z-index: 10;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  }
+
+  .attr-icon:hover::after,
+  .attr-icon:active::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .card-footer {
+    background: rgba(255,255,255,0.8);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 20px 24px;
+    border-top: 1px solid rgba(0,0,0,0.04);
+  }
+
+  .card-blurb {
+    font-size: 14px;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+    font-style: italic;
+  }
+
+  /* Interaction Hints */
+  .vote-hint {
+    position: absolute;
+    top: 20px;
+    padding: 8px 16px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    pointer-events: none;
+    opacity: 0;
+    border: 2px solid;
+    text-transform: uppercase;
+  }
+  .vote-hint.yes { left: 20px; color: #22c55e; border-color: #22c55e; transform: rotate(-10deg); }
+  .vote-hint.nope { right: 20px; color: #ef4444; border-color: #ef4444; transform: rotate(10deg); }
+
+  /* End of Deck / Reshuffle Screen */
+  .interstitial-screen {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    height: 100%;
+    animation: fadeIn 0.3s ease;
+    padding: 0 20px;
+  }
+  .interstitial-screen.visible { display: flex; }
+
+  .shuffle-icon { font-size: 48px; color: var(--color-text-tertiary); margin-bottom: 16px; }
+  .interstitial-title { font-size: 20px; font-weight: 600; margin-bottom: 8px; }
+  .interstitial-sub { font-size: 14px; color: var(--color-text-secondary); max-width: 240px; margin-bottom: 24px; line-height: 1.5; }
+
+  .btn-group {
+    display: flex;
+    gap: 12px;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .btn {
+    padding: 0 24px;
+    min-height: 48px;
+    border-radius: 99px;
+    font-size: 15px;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    background: var(--color-text-primary);
+    color: #fff;
+    transition: transform 0.1s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .btn:active { transform: scale(0.96); }
+  .btn.outline { background: transparent; color: var(--color-text-primary); border: 1px solid var(--color-border); }
+
+  .deck-status {
+    font-size: 12px;
+    color: var(--color-text-tertiary);
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    margin-top: 24px;
+  }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="mood-bar">
+    <span class="mood-label">Current Mood</span>
+    <select id="mood-select" class="mood-select" onchange="drawNewHand()">
+      <option value="any">Just browsing</option>
+      <option value="tired">Low Energy</option>
+      <option value="treat">Need a treat</option>
+      <option value="focused">Tunnel Vision</option>
+    </select>
+  </div>
+
+  <div id="card-stage" class="card-stage">
+    <div class="card-ghost card-ghost-2"></div>
+    <div class="card-ghost"></div>
+    <div id="vote-yes" class="vote-hint yes">Click</div>
+    <div id="vote-nope" class="vote-hint nope">Nope</div>
+    <div id="card" class="card" onmousedown="dragStart(event)" ontouchstart="dragStart(event)"></div>
+  </div>
+
+  <div id="reshuffle-screen" class="interstitial-screen">
+    <i class="ti ti-cards shuffle-icon"></i>
+    <div class="interstitial-title">Hand empty.</div>
+    <div class="interstitial-sub">Nothing hit the spot? Let's clear the board and draw a new hand.</div>
+    <button class="btn" onclick="drawNewHand()">Draw 5 New Cards</button>
+  </div>
+
+  <div id="match-screen" class="interstitial-screen">
+    <i class="ti ti-check shuffle-icon" style="color: #22c55e;"></i>
+    <div class="interstitial-title" id="match-title">Locked In</div>
+    <div class="interstitial-sub" id="match-sub"></div>
+    <div class="btn-group">
+        <button class="btn outline" onclick="drawNewHand()">Go back</button>
+        <button class="btn" onclick="drawNewHand()">Start Over</button>
+    </div>
+  </div>
+
+  <div id="deck-status" class="deck-status"></div>
+</div>
+
+<script>
+const TEMP_COLORS = {
+  'hot': '#fee2e2',        // Red
+  'warm': '#fef08a',       // Orange-Yellow
+  'cold': '#bfdbfe',       // Blue
+  'refreshing': '#99f6e4', // Teal-Mint
+  'neutral': '#f4f4f5'     // Grey / Off-white
+};
+
+const ATTR_ICONS = {
+  'sweet': '<i class="ti ti-candy"></i>',
+  'savory': '<i class="ti ti-meat"></i>',
+  'sour/tart': '<i class="ti ti-lemon"></i>',
+  'spicy': '<i class="ti ti-flame"></i>',
+  'bitter': '<i class="ti ti-coffee"></i>',
+  'creamy': '<i class="ti ti-milk"></i>',
+  'crunchy': '<i class="ti ti-bolt"></i>',
+  'chewy': '<i class="ti ti-ripple"></i>'
+};
+
+const DATABASE = [
+  // The Originals
+  { id: "spicy_ramen", name: "Spicy Ramen", type: "food", temp: "hot", flavor_profile: ["savory", "spicy"], texture: ["chewy"], fullness: "big meal", rarity: "uncommon", emoji: "🍜", blurb: "+20 Warmth. Temporarily blinds you to your problems via capsaicin." },
+  { id: "milk_tea", name: "Milk Tea", type: "drink", temp: "warm", flavor_profile: ["sweet"], texture: ["creamy", "chewy"], fullness: "snack", rarity: "common", emoji: "🧋", blurb: "Predictable in the best way. Restores 15% sanity." },
+  { id: "iced_lemon_tea", name: "Iced Lemon Tea", type: "drink", temp: "refreshing", flavor_profile: ["sour/tart", "sweet"], texture: [], fullness: "snack", rarity: "common", emoji: "🍋", blurb: "Clears the 'sluggish' debuff. Does exactly one thing. Does it perfectly." },
+  { id: "matcha_latte", name: "Matcha Latte", type: "drink", temp: "warm", flavor_profile: ["sweet", "bitter"], texture: ["creamy"], fullness: "snack", rarity: "uncommon", emoji: "🍵", blurb: "A little earthy, a little self-satisfied. Grants +5 Focus." },
+  { id: "dark_chocolate", name: "Dark Chocolate", type: "food", temp: "neutral", flavor_profile: ["sweet", "bitter"], texture: ["crunchy"], fullness: "snack", rarity: "uncommon", emoji: "🍫", blurb: "Not trying to impress anyone. Just quietly excellent." },
+  { id: "ice_cream", name: "Ice Cream", type: "food", temp: "cold", flavor_profile: ["sweet"], texture: ["creamy"], fullness: "snack", rarity: "rare", emoji: "🍦", blurb: "You know this is a mood, not just a snack. Best consumed immediately." },
+  { id: "potato_chips", name: "Potato Chips", type: "food", temp: "neutral", flavor_profile: ["savory"], texture: ["crunchy"], fullness: "snack", rarity: "common", emoji: "🥔", blurb: "The default drop. Always in the loot table when you need it." },
+  { id: "brownie", name: "Brownie", type: "food", temp: "warm", flavor_profile: ["sweet"], texture: ["chewy"], fullness: "snack", rarity: "rare", emoji: "🍫", blurb: "Dense. Serious. No notes." },
+  { id: "iced_americano", name: "Iced Americano", type: "drink", temp: "cold", flavor_profile: ["bitter"], texture: [], fullness: "snack", rarity: "common", emoji: "🧊", blurb: "Pure stamina potion. Tastes like productivity and mild anxiety." },
+  { id: "fried_chicken", name: "Fried Chicken", type: "food", temp: "hot", flavor_profile: ["savory"], texture: ["crunchy"], fullness: "big meal", rarity: "rare", emoji: "🍗", blurb: "High burst energy. Leaves a greasy residue on your controller." },
+  { id: "mochi", name: "Mochi Ice Cream", type: "food", temp: "cold", flavor_profile: ["sweet"], texture: ["chewy", "creamy"], fullness: "snack", rarity: "uncommon", emoji: "🍡", blurb: "A stealthy dessert. Melts if left in your inventory too long." },
+  { id: "pizza_slice", name: "Pizza Slice", type: "food", temp: "warm", flavor_profile: ["savory"], texture: ["chewy"], fullness: "big meal", rarity: "common", emoji: "🍕", blurb: "The golden ratio of cheese to carbs. Can be equipped one-handed." },
+  { id: "fruit_boba", name: "Fruit Boba Tea", type: "drink", temp: "refreshing", flavor_profile: ["sweet", "sour/tart"], texture: ["chewy"], fullness: "snack", rarity: "common", emoji: "🥤", blurb: "Colorful and chaotic. Basically a liquid fruit salad with tapioca bullets." },
+  { id: "gummy_worms", name: "Gummy Worms", type: "food", temp: "neutral", flavor_profile: ["sweet", "sour/tart"], texture: ["chewy"], fullness: "snack", rarity: "common", emoji: "🐛", blurb: "Stackable consumable. Impossible to eat just one." },
+  { id: "hot_cocoa", name: "Hot Cocoa", type: "drink", temp: "hot", flavor_profile: ["sweet"], texture: ["creamy"], fullness: "snack", rarity: "common", emoji: "☕", blurb: "Grants immunity to cold weather debuffs. Warning: Marshmallows melt fast." },
+  { id: "sushi", name: "Sushi Roll", type: "food", temp: "cold", flavor_profile: ["savory"], texture: ["chewy"], fullness: "big meal", rarity: "rare", emoji: "🍣", blurb: "Requires high dexterity to consume cleanly. Grants +10 Culture." },
+
+  // New Indonesian Staples
+  { id: "es_kopi_susu", name: "Es Kopi Susu", type: "drink", temp: "cold", flavor_profile: ["sweet", "bitter"], texture: ["creamy"], fullness: "snack", rarity: "common", emoji: "🥤", blurb: "The daily stamina potion for the modern worker. Sweet, strong, and highly addictive." },
+  { id: "indomie_goreng", name: "Indomie Goreng", type: "food", temp: "warm", flavor_profile: ["savory", "sweet"], texture: ["chewy"], fullness: "big meal", rarity: "rare", emoji: "🍝", blurb: "The ultimate midnight legendary drop. Literally never fails." },
+  { id: "gorengan", name: "Gorengan", type: "food", temp: "warm", flavor_profile: ["savory"], texture: ["crunchy"], fullness: "snack", rarity: "common", emoji: "🥟", blurb: "Street-side RNG loot. Restores morale but permanently debuffs your cholesterol." },
+  { id: "bakso", name: "Bakso", type: "food", temp: "hot", flavor_profile: ["savory"], texture: ["chewy"], fullness: "big meal", rarity: "uncommon", emoji: "🍲", blurb: "A warm, meaty hug in a bowl. Essential for rainy season survival." },
+  { id: "martabak_manis", name: "Martabak Manis", type: "food", temp: "warm", flavor_profile: ["sweet"], texture: ["chewy", "creamy"], fullness: "big meal", rarity: "rare", emoji: "🥞", blurb: "High-density calorie bomb. Shares well, but you'll probably eat half of it alone." },
+  { id: "sate_ayam", name: "Sate Ayam", type: "food", temp: "hot", flavor_profile: ["savory", "sweet"], texture: ["chewy", "crunchy"], fullness: "big meal", rarity: "uncommon", emoji: "🍢", blurb: "Grilled over literal hellfire. Peanut sauce grants +10 Charisma." },
+  { id: "seblak", name: "Seblak", type: "food", temp: "hot", flavor_profile: ["savory", "spicy"], texture: ["chewy"], fullness: "big meal", rarity: "uncommon", emoji: "🥘", blurb: "Inflicts heavy fire damage but boosts adrenaline. Not for the weak of stomach." },
+  { id: "es_teh_manis", name: "Es Teh Manis", type: "drink", temp: "refreshing", flavor_profile: ["sweet"], texture: [], fullness: "snack", rarity: "common", emoji: "🍹", blurb: "The default hydration choice. Cures all minor debuffs instantly." }
+];
+
+let persistentDeck = []; // Holds cards not yet seen
+let hand = [];           // Holds the current 5 cards
+let dragActive = false;
+let startX = 0, startY = 0, curX = 0, curY = 0;
+let animating = false;
+
+// Upgraded to Fisher-Yates Shuffle for true randomization
+function shuffle(array) {
+  let currentIndex = array.length, randomIndex;
+  while (currentIndex !== 0) {
+    randomIndex = Math.floor(Math.random() * currentIndex);
+    currentIndex--;
+    [array[currentIndex], array[randomIndex]] = [array[randomIndex], array[currentIndex]];
+  }
+  return array;
+}
+
+function drawNewHand() {
+  // If we don't have enough cards left in the persistent deck to draw 5, reshuffle everything!
+  if (persistentDeck.length < 5) {
+    console.log("Reshuffling the entire deck!");
+    persistentDeck = shuffle([...DATABASE]);
+  }
+  
+  // Draw 5 cards from the top of the persistent deck
+  hand = persistentDeck.splice(0, 5); 
+  
+  document.getElementById('reshuffle-screen').classList.remove('visible');
+  document.getElementById('match-screen').classList.remove('visible');
+  document.getElementById('card-stage').style.display = 'flex';
+  document.getElementById('deck-status').style.display = 'block';
+  
+  renderTopCard();
+}
+
+function renderTopCard() {
+  const statusEl = document.getElementById('deck-status');
+  
+  if (hand.length === 0) {
+    document.getElementById('card-stage').style.display = 'none';
+    statusEl.style.display = 'none';
+    document.getElementById('reshuffle-screen').classList.add('visible');
+    return;
+  }
+  
+  statusEl.textContent = `${hand.length} card${hand.length !== 1 ? 's' : ''} left in hand`;
+  
+  const currentItem = hand[hand.length - 1];
+  const card = document.getElementById('card');
+  card.style.transform = '';
+  card.style.transition = '';
+  card.style.opacity = '1';
+  
+  card.style.background = TEMP_COLORS[currentItem.temp];
+
+  const attrs = [...currentItem.flavor_profile, ...currentItem.texture];
+  
+  const iconHtml = attrs.map(attr => 
+    `<div class="attr-icon" data-tooltip="${attr}">${ATTR_ICONS[attr] || ''}</div>`
+  ).join('');
+
+  card.innerHTML = `
+    <div class="card-header">
+      <div class="card-type-label">${currentItem.temp} ${currentItem.type}</div>
+      <div class="card-emoji">${currentItem.emoji}</div>
+      <div class="card-name">${currentItem.name}</div>
+      <div class="attribute-icons" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+        ${iconHtml}
+      </div>
+    </div>
+    <div class="card-footer">
+      <div class="card-blurb">"${currentItem.blurb}"</div>
+    </div>
+  `;
+
+  document.getElementById('vote-yes').style.opacity = '0';
+  document.getElementById('vote-nope').style.opacity = '0';
+}
+
+function dragStart(e) {
+  if (animating) return;
+  dragActive = true;
+  const touch = e.touches ? e.touches[0] : e;
+  startX = touch.clientX;
+  startY = touch.clientY;
+  curX = 0; curY = 0;
+  
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('touchmove', dragMove, {passive: false});
+  document.addEventListener('mouseup', dragEnd);
+  document.addEventListener('touchend', dragEnd);
+}
+
+function dragMove(e) {
+  if (!dragActive) return;
+  const touch = e.touches ? e.touches[0] : e;
+  curX = touch.clientX - startX;
+  curY = touch.clientY - startY;
+  const rot = curX * 0.08;
+  const card = document.getElementById('card');
+  card.style.transform = `translate(${curX}px, ${curY * 0.3}px) rotate(${rot}deg)`;
+  card.style.transition = 'none';
+
+  const yesHint = document.getElementById('vote-yes');
+  const nopeHint = document.getElementById('vote-nope');
+  
+  if (curX > 60) { yesHint.style.opacity = Math.min((curX - 60) / 60, 1); nopeHint.style.opacity = '0'; } 
+  else if (curX < -60) { nopeHint.style.opacity = Math.min((-curX - 60) / 60, 1); yesHint.style.opacity = '0'; } 
+  else { yesHint.style.opacity = '0'; nopeHint.style.opacity = '0'; }
+}
+
+function dragEnd() {
+  dragActive = false;
+  document.removeEventListener('mousemove', dragMove);
+  document.removeEventListener('touchmove', dragMove);
+  document.removeEventListener('mouseup', dragEnd);
+  document.removeEventListener('touchend', dragEnd);
+
+  if (Math.abs(curX) > 120) {
+    swipeCard(curX > 0 ? 'right' : 'left');
+  } else {
+    const card = document.getElementById('card');
+    card.style.transition = 'transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)';
+    card.style.transform = '';
+    document.getElementById('vote-yes').style.opacity = '0';
+    document.getElementById('vote-nope').style.opacity = '0';
+  }
+}
+
+function swipeCard(dir) {
+  animating = true;
+  const card = document.getElementById('card');
+  const tx = dir === 'right' ? window.innerWidth : -window.innerWidth;
+  card.style.transition = 'transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s';
+  card.style.transform = `translate(${tx}px, ${curY}px) rotate(${dir === 'right' ? 30 : -30}deg)`;
+  card.style.opacity = '0';
+
+  setTimeout(() => {
+    const item = hand.pop();
+    if (dir === 'right') {
+      triggerMatch(item);
+    } else {
+      renderTopCard();
+    }
+    animating = false;
+  }, 350);
+}
+
+function triggerMatch(item) {
+  document.getElementById('card-stage').style.display = 'none';
+  document.getElementById('deck-status').style.display = 'none';
+  document.getElementById('match-title').textContent = `${item.name} Selected`;
+  document.getElementById('match-sub').textContent = "Excellent choice. Go get it.";
+  document.getElementById('match-screen').classList.add('visible');
+}
+
+//Boot up
+drawNewHand();
+</script>
+</body>
+</html>
