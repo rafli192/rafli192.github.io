@@ -57,8 +57,22 @@
   
   /* Nutrition Mini UI */
   .nutrition-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-  .nutri-pill { font-size: 11px; padding: 4px 10px; border-radius: var(--sketch-radius); background: #fff; border: 1.5px solid var(--color-border); font-weight: 700; display: flex; align-items: center; gap: 6px; box-shadow: 1px 1px 0px var(--color-ink); }
-  .level-dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid var(--color-border); }
+  .nutri-pill { 
+    font-size: 11px; 
+    padding: 4px 10px; 
+    border-radius: var(--sketch-radius); 
+    background: #fff; 
+    border: 1.5px solid var(--color-border); 
+    font-weight: 700; 
+    display: flex; 
+    flex-direction: column; /* Changed to column to stack labels */
+    align-items: center; 
+    gap: 2px; 
+    box-shadow: 1px 1px 0px var(--color-ink); 
+  }
+  
+  .nutri-value-primary { font-size: 12px; } /* The "Tablespoon" visual */
+  .nutri-value-secondary { font-size: 9px; opacity: 0.6; } /* The "g/mg" technical */
   .level-dot.low { background: #4ade80; }
   .level-dot.mid { background: #facc15; }
   .level-dot.high { background: #f87171; }
@@ -198,6 +212,15 @@
 </div>
 
 <script>
+
+  function getVisualUnit(val, key) {
+    if (key === 'sugar') return `${Math.round(val / 4)} tsp sugar`;
+    if (key === 'fat') return `${Math.round(val / 14)} tbsp fat`;
+    if (key === 'sod') return `${Math.round(val / 2300 * 100)}% daily salt`;
+    if (key === 'cal') return `${val} kcal`;
+    if (key === 'caf') return `${val}mg caf`;
+    return `${val}`;
+}
 // Cache DOM Elements to prevent layout thrashing
 const DOM = {
   filterBar: document.getElementById('filter-bar'),
@@ -309,8 +332,18 @@ function renderTopCard() {
   const pillsHtml = Object.entries(item.nutri).map(([key, val]) => {
     if(val === 0) return ''; 
     const level = getLevel(val, LIMITS[key]);
-    return `<div class="nutri-pill"><div class="level-dot ${level}"></div> ${labels[key]}</div>`;
+    const visual = getVisualUnit(val, key);
+    
+    return `
+      <div class="nutri-pill">
+        <div style="display: flex; align-items: center; gap: 4px;">
+           <div class="level-dot ${level}"></div> 
+           <span class="nutri-value-primary">${visual}</span>
+        </div>
+        <span class="nutri-value-secondary">${val}${key === 'sod' ? 'mg' : 'g'}</span>
+      </div>`;
   }).join('');
+
 
   DOM.card.innerHTML = `
     <div class="card-header">
