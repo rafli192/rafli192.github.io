@@ -31,16 +31,24 @@
   .filter-label { font-family: var(--font-sketch); font-size: 16px; font-weight: 700; color: var(--color-ink-light); }
   .filter-select { border: 2px solid var(--color-border); border-radius: var(--sketch-radius); background: #fff; font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--color-ink); outline: none; cursor: pointer; padding: 4px 8px; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
 
-  /* Card Stage & Guidance */
-  .card-stage { width: 100%; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1000px; margin-bottom: 24px; }
-  
-  .swipe-guidance { position: absolute; width: 100%; display: flex; justify-content: space-between; padding: 0 10px; font-family: var(--font-sketch); font-size: 20px; font-weight: 700; color: var(--color-ink-light); z-index: 0; opacity: 0.5; pointer-events: none; }
+  /* Card Stage */
+  .card-stage { width: 100%; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1000px; margin-bottom: 12px; }
   
   .card-ghost { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); background: #fff; border: 2px solid var(--color-border); transform: scale(0.95) translateY(10px); opacity: 0.4; }
   .card-ghost-2 { transform: scale(0.9) translateY(20px); opacity: 0.2; }
   
   .card { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); cursor: grab; user-select: none; will-change: transform; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sketch-shadow); border: 2px solid var(--color-border); touch-action: none; z-index: 2; background: #fff; }
   .card:active { cursor: grabbing; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
+
+  /* NEW: Introductory Nudge Animation */
+  @keyframes nudgeHint {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    20% { transform: translate3d(15px, -5px, 0) rotate(3deg); }
+    40% { transform: translate3d(-15px, -5px, 0) rotate(-3deg); }
+    60% { transform: translate3d(8px, -2px, 0) rotate(1deg); }
+    80% { transform: translate3d(-8px, -2px, 0) rotate(-1deg); }
+  }
+  .nudge { animation: nudgeHint 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s; }
 
   /* Card Details */
   .card-header { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; position: relative; }
@@ -57,11 +65,19 @@
 
   .card-footer { background: rgba(255,255,255,0.7); border-top: 2px dashed var(--color-border); padding: 16px 20px; font-size: 14px; line-height: 1.4; font-style: italic; font-weight: 500; }
 
-  /* Hints & Screens */
+  /* Hints */
   .vote-hint { position: absolute; top: 20px; padding: 8px 16px; border-radius: var(--sketch-radius); font-family: var(--font-sketch); font-size: 24px; font-weight: 700; pointer-events: none; opacity: 0; border: 3px solid; box-shadow: var(--sketch-shadow); background: #fff; z-index: 10;}
   .vote-hint.yes { left: 20px; color: #16a34a; border-color: #16a34a; transform: rotate(-10deg); }
   .vote-hint.nope { right: 20px; color: #dc2626; border-color: #dc2626; transform: rotate(10deg); }
 
+  /* NEW: Minimalist Action Buttons */
+  .action-buttons { display: flex; gap: 24px; justify-content: center; margin-bottom: 16px; z-index: 10; width: 100%; }
+  .action-btn { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--color-border); background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--sketch-shadow); transition: transform 0.1s, box-shadow 0.1s; font-size: 28px; color: var(--color-ink); }
+  .action-btn:active { box-shadow: 1px 1px 0px rgba(0,0,0,0.8); transform: translateY(3px); }
+  .action-btn.pass { color: #dc2626; }
+  .action-btn.take { color: #16a34a; }
+
+  /* Screens */
   .screen { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; width: 100%; padding: 0 10px; margin-bottom: 24px; overflow-y: auto; }
   .screen.visible { display: flex; }
   .screen-title { font-family: var(--font-sketch); font-size: 28px; font-weight: 700; margin-bottom: 8px; text-align: center; }
@@ -72,13 +88,11 @@
   .warning-box.visible { display: block; }
   .warning-title { font-family: var(--font-sketch); font-size: 20px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
 
-  /* Final Receipt */
   .receipt-box { width: 100%; background: #fff; border: 2px solid var(--color-border); padding: 16px; border-radius: 8px; margin-bottom: 24px; box-shadow: var(--sketch-shadow); position: relative; }
   .receipt-box::before { content: ''; position: absolute; top: -10px; left: 0; right: 0; height: 10px; background-image: radial-gradient(circle, transparent 4px, #fff 4px); background-size: 12px 20px; }
   .receipt-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; border-bottom: 1px dashed var(--color-ink-light); padding: 6px 0; }
   .receipt-row:last-child { border-bottom: none; }
 
-  /* Final Spread display */
   .final-spread { display: flex; gap: 10px; justify-content: center; width: 100%; margin-bottom: 20px; }
   .final-card { flex: 1; max-width: 100px; background: #fff; border: 2px solid var(--color-border); border-radius: var(--sketch-radius); padding: 10px; text-align: center; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; }
   .final-card-emoji { font-size: 32px; margin-bottom: 4px; }
@@ -122,16 +136,20 @@
   </div>
 
   <div id="card-stage" class="card-stage">
-    <div class="swipe-guidance">
-        <span>← Pass</span>
-        <span>Take it →</span>
-    </div>
-
     <div class="card-ghost card-ghost-2"></div>
     <div class="card-ghost"></div>
     <div id="vote-yes" class="vote-hint yes">Yup!</div>
     <div id="vote-nope" class="vote-hint nope">Nah</div>
     <div id="card" class="card" onmousedown="dragStart(event)" ontouchstart="dragStart(event)"></div>
+  </div>
+
+  <div id="action-buttons" class="action-buttons">
+      <button class="action-btn pass" onclick="swipeCard('left')" aria-label="Pass">
+          <i class="ti ti-x"></i>
+      </button>
+      <button class="action-btn take" onclick="swipeCard('right')" aria-label="Take it">
+          <i class="ti ti-check"></i>
+      </button>
   </div>
 
   <div id="draft-prompt-screen" class="screen">
@@ -180,12 +198,13 @@
 </div>
 
 <script>
-// OPTIMIZATION 1: Cache DOM Elements to prevent layout thrashing
+// Cache DOM Elements to prevent layout thrashing
 const DOM = {
   filterBar: document.getElementById('filter-bar'),
   deckSelect: document.getElementById('deck-select'),
   moodSelect: document.getElementById('mood-select'),
   cardStage: document.getElementById('card-stage'),
+  actionButtons: document.getElementById('action-buttons'), // Cached Action Buttons
   card: document.getElementById('card'),
   voteYes: document.getElementById('vote-yes'),
   voteNope: document.getElementById('vote-nope'),
@@ -238,6 +257,7 @@ let deck = [];
 let draftedCards = [];   
 let dragActive = false;
 let startX = 0, startY = 0, curX = 0, curY = 0;
+let animating = false;
 
 function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
@@ -247,7 +267,6 @@ function hardReset() {
   DOM.deckSelect.disabled = false;
   DOM.moodSelect.disabled = false;
   
-  // OPTIMIZATION 4: Optimized loop over cached DOM elements
   DOM.slots.forEach(slot => {
     slot.className = 'draft-slot';
     slot.innerHTML = ''; 
@@ -256,6 +275,7 @@ function hardReset() {
   
   DOM.draftCounter.textContent = `0 / 3`;
   DOM.draftTray.style.display = 'block';
+  DOM.actionButtons.style.display = 'flex'; // Ensure buttons are visible
   
   const cat = DOM.deckSelect.value;
   let pool = cat === 'all' ? DATABASE : DATABASE.filter(item => item.category === cat);
@@ -279,6 +299,11 @@ function renderTopCard() {
   DOM.card.style.transition = ''; 
   DOM.card.style.opacity = '1';
   DOM.card.style.background = item.bg;
+  
+  // Trigger the gentle nudge animation
+  DOM.card.classList.remove('nudge');
+  void DOM.card.offsetWidth; // Trigger reflow to restart animation
+  DOM.card.classList.add('nudge');
 
   const labels = { cal: 'Cal', sugar: 'Sugar', sod: 'Salt', fat: 'Fat', caf: 'Caf' };
   const pillsHtml = Object.entries(item.nutri).map(([key, val]) => {
@@ -299,7 +324,12 @@ function renderTopCard() {
 
 // Physics & Event Listeners
 function dragStart(e) { 
+  if (animating) return;
   dragActive = true; 
+  
+  // Stop the nudge animation if the user touches the card
+  DOM.card.classList.remove('nudge');
+  
   const t = e.touches ? e.touches[0] : e; 
   startX = t.clientX; startY = t.clientY; curX = 0; curY = 0; 
   document.addEventListener('mousemove', dragMove); 
@@ -310,15 +340,12 @@ function dragStart(e) {
 
 function dragMove(e) { 
   if(!dragActive) return; 
-  
-  // OPTIMIZATION 3: Actively prevent Safari 'swipe back' navigation
   if (e.cancelable) e.preventDefault();
   
   const t = e.touches ? e.touches[0] : e; 
   curX = t.clientX - startX; 
   curY = t.clientY - startY; 
   
-  // OPTIMIZATION 2: Force GPU Hardware Acceleration using translate3d
   DOM.card.style.transform = `translate3d(${curX}px, ${curY*0.3}px, 0) rotate(${curX*0.08}deg)`; 
   
   if (curX > 60) { 
@@ -350,14 +377,21 @@ function dragEnd() {
 }
 
 function swipeCard(dir) {
+  if (animating) return;
+  animating = true;
   DOM.card.style.transition = 'transform 0.4s, opacity 0.3s';
   DOM.card.style.transform = `translate3d(${dir==='right'?500:-500}px, ${curY}px, 0) rotate(${dir==='right'?30:-30}deg)`;
   DOM.card.style.opacity = '0';
+  
+  // Hide UI hints if triggered via button click
+  DOM.voteYes.style.opacity = 0; 
+  DOM.voteNope.style.opacity = 0;
 
   setTimeout(() => {
     const item = deck.pop();
     if (dir === 'right') handleDraft(item);
     else renderTopCard();
+    animating = false;
   }, 300);
 }
 
@@ -387,6 +421,7 @@ function handleDraft(item) {
   slot.innerHTML = `<div class="slot-emoji">${item.emoji}</div>`;
 
   DOM.cardStage.style.display = 'none';
+  DOM.actionButtons.style.display = 'none'; // Hide buttons on prompt screen
   
   if (draftedCards.length === 3) finishDraft();
   else {
@@ -404,12 +439,14 @@ function handleDraft(item) {
 function resumeDraft() { 
   DOM.draftPrompt.classList.remove('visible'); 
   DOM.cardStage.style.display = 'flex'; 
+  DOM.actionButtons.style.display = 'flex'; // Bring buttons back
   renderTopCard(); 
 }
 
 function finishDraft() { 
   DOM.draftPrompt.classList.remove('visible'); 
   DOM.cardStage.style.display = 'none';
+  DOM.actionButtons.style.display = 'none'; // Ensure buttons stay hidden
   DOM.draftTray.style.display = 'none';
   
   DOM.finalSpread.innerHTML = draftedCards.map(item => `
