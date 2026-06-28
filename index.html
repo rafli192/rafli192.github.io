@@ -4,19 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Mindful Swiper - Sketchbook Edition</title>
-<!-- Importing Google Fonts for the playful theme -->
 <link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
 <style>
   :root {
     --font-sketch: 'Kalam', cursive;
     --font-body: 'Nunito', sans-serif;
-    --color-paper: #fdfaf5; /* Off-white paper look */
+    --color-paper: #fdfaf5;
     --color-ink: #1c1c1c;
     --color-ink-light: #5a5a5a;
     --color-border: #1c1c1c;
     
-    /* Sketchy border radius trick */
     --sketch-radius: 8px 24px 12px 24px / 24px 8px 24px 12px;
     --sketch-shadow: 4px 4px 0px rgba(0,0,0,0.8);
   }
@@ -36,14 +34,13 @@
   /* Card Stage & Guidance */
   .card-stage { width: 100%; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1000px; margin-bottom: 24px; }
   
-  /* NEW: Swipe Guidance */
   .swipe-guidance { position: absolute; width: 100%; display: flex; justify-content: space-between; padding: 0 10px; font-family: var(--font-sketch); font-size: 20px; font-weight: 700; color: var(--color-ink-light); z-index: 0; opacity: 0.5; pointer-events: none; }
   
   .card-ghost { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); background: #fff; border: 2px solid var(--color-border); transform: scale(0.95) translateY(10px); opacity: 0.4; }
   .card-ghost-2 { transform: scale(0.9) translateY(20px); opacity: 0.2; }
   
   .card { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); cursor: grab; user-select: none; will-change: transform; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sketch-shadow); border: 2px solid var(--color-border); touch-action: none; z-index: 2; background: #fff; }
-  .card:active { cursor: grabbing; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); } /* Push down effect */
+  .card:active { cursor: grabbing; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
 
   /* Card Details */
   .card-header { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; position: relative; }
@@ -91,7 +88,7 @@
   .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; }
   .btn { padding: 0 24px; min-height: 54px; border-radius: var(--sketch-radius); font-family: var(--font-sketch); font-size: 20px; font-weight: 700; border: 2px solid var(--color-border); cursor: pointer; background: var(--color-paper); color: var(--color-ink); box-shadow: var(--sketch-shadow); transition: all 0.1s; }
   .btn:active { box-shadow: 1px 1px 0px rgba(0,0,0,0.8); transform: translateY(3px); }
-  .btn.primary { background: #fef08a; } /* Yellow highlight */
+  .btn.primary { background: #fef08a; }
 
   /* Draft Tray */
   .draft-tray-container { width: 100%; padding-top: 16px; border-top: 2px dashed var(--color-ink-light); }
@@ -125,7 +122,6 @@
   </div>
 
   <div id="card-stage" class="card-stage">
-    <!-- Swipe Guidance -->
     <div class="swipe-guidance">
         <span>← Pass</span>
         <span>Take it →</span>
@@ -138,10 +134,9 @@
     <div id="card" class="card" onmousedown="dragStart(event)" ontouchstart="dragStart(event)"></div>
   </div>
 
-  <!-- Intermediate Draft Screen -->
   <div id="draft-prompt-screen" class="screen">
-    <div class="screen-title" id="draft-prompt-title">Item Added!</div>
-    <div class="screen-sub" id="draft-prompt-sub">You can hold up to 3 items.</div>
+    <div class="screen-title">Item Added!</div>
+    <div class="screen-sub">You can hold up to 3 items.</div>
     
     <div id="nutrition-warning" class="warning-box">
       <div class="warning-title"><i class="ti ti-alert-triangle"></i> Heads Up!</div>
@@ -154,13 +149,10 @@
     </div>
   </div>
 
-  <!-- Final Summary Screen -->
   <div id="match-screen" class="screen">
     <div class="screen-title">Your Final Loadout</div>
     
-    <div id="final-spread" class="final-spread">
-        <!-- Injected via JS -->
-    </div>
+    <div id="final-spread" class="final-spread"></div>
 
     <div id="final-receipt" class="receipt-box">
         <div class="warning-title" style="margin-bottom: 12px;">Nutrition Summary</div>
@@ -177,20 +169,45 @@
     </div>
   </div>
 
-  <!-- Bottom Draft Tray -->
   <div id="draft-tray-container" class="draft-tray-container">
     <div class="draft-header"><span>Your Stash</span><span id="draft-counter">0 / 3</span></div>
     <div class="draft-slots">
-        <div class="draft-slot" id="slot-0"></div><div class="draft-slot" id="slot-1"></div><div class="draft-slot" id="slot-2"></div>
+        <div class="draft-slot" id="slot-0"></div>
+        <div class="draft-slot" id="slot-1"></div>
+        <div class="draft-slot" id="slot-2"></div>
     </div>
   </div>
 </div>
 
 <script>
-// Women's Daily Baselines
+// OPTIMIZATION 1: Cache DOM Elements to prevent layout thrashing
+const DOM = {
+  filterBar: document.getElementById('filter-bar'),
+  deckSelect: document.getElementById('deck-select'),
+  moodSelect: document.getElementById('mood-select'),
+  cardStage: document.getElementById('card-stage'),
+  card: document.getElementById('card'),
+  voteYes: document.getElementById('vote-yes'),
+  voteNope: document.getElementById('vote-nope'),
+  draftPrompt: document.getElementById('draft-prompt-screen'),
+  nutritionWarning: document.getElementById('nutrition-warning'),
+  warningText: document.getElementById('warning-text'),
+  matchScreen: document.getElementById('match-screen'),
+  finalSpread: document.getElementById('final-spread'),
+  receiptRows: document.getElementById('receipt-rows'),
+  finalWarning: document.getElementById('final-warning'),
+  finalWarningText: document.getElementById('final-warning-text'),
+  draftTray: document.getElementById('draft-tray-container'),
+  draftCounter: document.getElementById('draft-counter'),
+  slots: [
+    document.getElementById('slot-0'),
+    document.getElementById('slot-1'),
+    document.getElementById('slot-2')
+  ]
+};
+
 const LIMITS = { cal: 2000, sugar: 25, sod: 2000, fat: 20, caf: 400 };
 
-// Minimal UI mapping
 function getLevel(val, limit) {
   const pct = val / limit;
   if (pct < 0.15) return 'low';
@@ -226,19 +243,21 @@ function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
 
 function hardReset() {
   draftedCards = [];
-  document.getElementById('filter-bar').classList.remove('locked');
-  document.getElementById('deck-select').disabled = false;
-  document.getElementById('mood-select').disabled = false;
+  DOM.filterBar.classList.remove('locked');
+  DOM.deckSelect.disabled = false;
+  DOM.moodSelect.disabled = false;
   
-  for(let i=0; i<3; i++) {
-    const slot = document.getElementById(`slot-${i}`);
+  // OPTIMIZATION 4: Optimized loop over cached DOM elements
+  DOM.slots.forEach(slot => {
     slot.className = 'draft-slot';
-    slot.innerHTML = ''; slot.style.background = '#fff';
-  }
-  document.getElementById('draft-counter').textContent = `0 / 3`;
-  document.getElementById('draft-tray-container').style.display = 'block';
+    slot.innerHTML = ''; 
+    slot.style.background = '#fff';
+  });
   
-  const cat = document.getElementById('deck-select').value;
+  DOM.draftCounter.textContent = `0 / 3`;
+  DOM.draftTray.style.display = 'block';
+  
+  const cat = DOM.deckSelect.value;
   let pool = cat === 'all' ? DATABASE : DATABASE.filter(item => item.category === cat);
   deck = shuffle([...pool]); 
   
@@ -246,9 +265,9 @@ function hardReset() {
 }
 
 function drawNewHand() {
-  document.getElementById('draft-prompt-screen').classList.remove('visible');
-  document.getElementById('match-screen').classList.remove('visible');
-  document.getElementById('card-stage').style.display = 'flex';
+  DOM.draftPrompt.classList.remove('visible');
+  DOM.matchScreen.classList.remove('visible');
+  DOM.cardStage.style.display = 'flex';
   renderTopCard();
 }
 
@@ -256,9 +275,10 @@ function renderTopCard() {
   if (deck.length === 0) deck = shuffle([...DATABASE]); 
   
   const item = deck[deck.length - 1];
-  const card = document.getElementById('card');
-  card.style.transform = ''; card.style.transition = ''; card.style.opacity = '1';
-  card.style.background = item.bg;
+  DOM.card.style.transform = ''; 
+  DOM.card.style.transition = ''; 
+  DOM.card.style.opacity = '1';
+  DOM.card.style.background = item.bg;
 
   const labels = { cal: 'Cal', sugar: 'Sugar', sod: 'Salt', fat: 'Fat', caf: 'Caf' };
   const pillsHtml = Object.entries(item.nutri).map(([key, val]) => {
@@ -267,7 +287,7 @@ function renderTopCard() {
     return `<div class="nutri-pill"><div class="level-dot ${level}"></div> ${labels[key]}</div>`;
   }).join('');
 
-  card.innerHTML = `
+  DOM.card.innerHTML = `
     <div class="card-header">
       <div class="card-emoji">${item.emoji}</div>
       <div class="card-name">${item.name}</div>
@@ -277,20 +297,62 @@ function renderTopCard() {
   `;
 }
 
-// Physics
-function dragStart(e) { dragActive = true; const t = e.touches ? e.touches[0] : e; startX = t.clientX; startY = t.clientY; curX = 0; curY = 0; document.addEventListener('mousemove', dragMove); document.addEventListener('touchmove', dragMove, {passive: false}); document.addEventListener('mouseup', dragEnd); document.addEventListener('touchend', dragEnd); }
-function dragMove(e) { if(!dragActive) return; const t = e.touches ? e.touches[0] : e; curX = t.clientX - startX; curY = t.clientY - startY; document.getElementById('card').style.transform = `translate(${curX}px, ${curY*0.3}px) rotate(${curX*0.08}deg)`; 
-  if (curX > 60) { document.getElementById('vote-yes').style.opacity = Math.min((curX - 60)/60, 1); document.getElementById('vote-nope').style.opacity = 0; }
-  else if (curX < -60) { document.getElementById('vote-nope').style.opacity = Math.min((-curX - 60)/60, 1); document.getElementById('vote-yes').style.opacity = 0; }
-  else { document.getElementById('vote-yes').style.opacity = 0; document.getElementById('vote-nope').style.opacity = 0; }
+// Physics & Event Listeners
+function dragStart(e) { 
+  dragActive = true; 
+  const t = e.touches ? e.touches[0] : e; 
+  startX = t.clientX; startY = t.clientY; curX = 0; curY = 0; 
+  document.addEventListener('mousemove', dragMove); 
+  document.addEventListener('touchmove', dragMove, {passive: false}); 
+  document.addEventListener('mouseup', dragEnd); 
+  document.addEventListener('touchend', dragEnd); 
 }
-function dragEnd() { dragActive = false; document.removeEventListener('mousemove', dragMove); document.removeEventListener('touchmove', dragMove); document.removeEventListener('mouseup', dragEnd); document.removeEventListener('touchend', dragEnd); if(Math.abs(curX) > 100) swipeCard(curX > 0 ? 'right' : 'left'); else { const c = document.getElementById('card'); c.style.transition = 'transform 0.3s'; c.style.transform = ''; document.getElementById('vote-yes').style.opacity = 0; document.getElementById('vote-nope').style.opacity = 0;} }
+
+function dragMove(e) { 
+  if(!dragActive) return; 
+  
+  // OPTIMIZATION 3: Actively prevent Safari 'swipe back' navigation
+  if (e.cancelable) e.preventDefault();
+  
+  const t = e.touches ? e.touches[0] : e; 
+  curX = t.clientX - startX; 
+  curY = t.clientY - startY; 
+  
+  // OPTIMIZATION 2: Force GPU Hardware Acceleration using translate3d
+  DOM.card.style.transform = `translate3d(${curX}px, ${curY*0.3}px, 0) rotate(${curX*0.08}deg)`; 
+  
+  if (curX > 60) { 
+    DOM.voteYes.style.opacity = Math.min((curX - 60)/60, 1); 
+    DOM.voteNope.style.opacity = 0; 
+  } else if (curX < -60) { 
+    DOM.voteNope.style.opacity = Math.min((-curX - 60)/60, 1); 
+    DOM.voteYes.style.opacity = 0; 
+  } else { 
+    DOM.voteYes.style.opacity = 0; 
+    DOM.voteNope.style.opacity = 0; 
+  }
+}
+
+function dragEnd() { 
+  dragActive = false; 
+  document.removeEventListener('mousemove', dragMove); 
+  document.removeEventListener('touchmove', dragMove); 
+  document.removeEventListener('mouseup', dragEnd); 
+  document.removeEventListener('touchend', dragEnd); 
+  
+  if(Math.abs(curX) > 100) swipeCard(curX > 0 ? 'right' : 'left'); 
+  else { 
+    DOM.card.style.transition = 'transform 0.3s'; 
+    DOM.card.style.transform = ''; 
+    DOM.voteYes.style.opacity = 0; 
+    DOM.voteNope.style.opacity = 0;
+  } 
+}
 
 function swipeCard(dir) {
-  const card = document.getElementById('card');
-  card.style.transition = 'transform 0.4s, opacity 0.3s';
-  card.style.transform = `translate(${dir==='right'?500:-500}px, ${curY}px) rotate(${dir==='right'?30:-30}deg)`;
-  card.style.opacity = '0';
+  DOM.card.style.transition = 'transform 0.4s, opacity 0.3s';
+  DOM.card.style.transform = `translate3d(${dir==='right'?500:-500}px, ${curY}px, 0) rotate(${dir==='right'?30:-30}deg)`;
+  DOM.card.style.opacity = '0';
 
   setTimeout(() => {
     const item = deck.pop();
@@ -299,7 +361,6 @@ function swipeCard(dir) {
   }, 300);
 }
 
-// Calculate logic returning total numbers and warnings array
 function getNutritionStatus() {
   const totals = { cal: 0, sugar: 0, sod: 0, fat: 0, caf: 0 };
   draftedCards.forEach(item => Object.keys(totals).forEach(k => totals[k] += item.nutri[k]));
@@ -317,67 +378,67 @@ function handleDraft(item) {
   draftedCards.push(item);
   const slotIndex = draftedCards.length - 1;
   
-  if (draftedCards.length === 1) document.getElementById('filter-bar').classList.add('locked');
+  if (draftedCards.length === 1) DOM.filterBar.classList.add('locked');
 
-  document.getElementById('draft-counter').textContent = `${draftedCards.length} / 3`;
-  const slot = document.getElementById(`slot-${slotIndex}`);
-  slot.classList.add('filled'); slot.style.background = item.bg;
+  DOM.draftCounter.textContent = `${draftedCards.length} / 3`;
+  const slot = DOM.slots[slotIndex];
+  slot.classList.add('filled'); 
+  slot.style.background = item.bg;
   slot.innerHTML = `<div class="slot-emoji">${item.emoji}</div>`;
 
-  document.getElementById('card-stage').style.display = 'none';
+  DOM.cardStage.style.display = 'none';
   
   if (draftedCards.length === 3) finishDraft();
   else {
       const { warnings } = getNutritionStatus();
-      const warningBox = document.getElementById('nutrition-warning');
       if (warnings.length > 0) {
-        document.getElementById('warning-text').innerHTML = warnings.join('<br>• ');
-        warningBox.classList.add('visible');
+        DOM.warningText.innerHTML = warnings.join('<br>• ');
+        DOM.nutritionWarning.classList.add('visible');
       } else {
-        warningBox.classList.remove('visible');
+        DOM.nutritionWarning.classList.remove('visible');
       }
-      document.getElementById('draft-prompt-screen').classList.add('visible');
+      DOM.draftPrompt.classList.add('visible');
   }
 }
 
-function resumeDraft() { document.getElementById('draft-prompt-screen').classList.remove('visible'); document.getElementById('card-stage').style.display = 'flex'; renderTopCard(); }
+function resumeDraft() { 
+  DOM.draftPrompt.classList.remove('visible'); 
+  DOM.cardStage.style.display = 'flex'; 
+  renderTopCard(); 
+}
 
 function finishDraft() { 
-  document.getElementById('draft-prompt-screen').classList.remove('visible'); 
-  document.getElementById('card-stage').style.display = 'none';
-  document.getElementById('draft-tray-container').style.display = 'none';
+  DOM.draftPrompt.classList.remove('visible'); 
+  DOM.cardStage.style.display = 'none';
+  DOM.draftTray.style.display = 'none';
   
-  // Render visual cards
-  document.getElementById('final-spread').innerHTML = draftedCards.map(item => `
+  DOM.finalSpread.innerHTML = draftedCards.map(item => `
     <div class="final-card" style="background: ${item.bg}">
       <div class="final-card-emoji">${item.emoji}</div>
       <div class="final-card-name">${item.name}</div>
     </div>
   `).join('');
 
-  // Render Receipt
   const { totals, warnings } = getNutritionStatus();
   const formatKey = { cal: 'Calories', sugar: 'Sugar (g)', sod: 'Sodium (mg)', fat: 'Sat. Fat (g)', caf: 'Caffeine (mg)' };
   
-  document.getElementById('receipt-rows').innerHTML = Object.entries(totals).map(([key, val]) => {
-      // Color code the text if it's over 80%
+  DOM.receiptRows.innerHTML = Object.entries(totals).map(([key, val]) => {
       const isHigh = val > LIMITS[key] * 0.8;
       const colorStyle = isHigh ? 'color: #dc2626;' : '';
       return `<div class="receipt-row" style="${colorStyle}"><span>${formatKey[key]}</span><span>${val}</span></div>`;
   }).join('');
 
-  // Final Warnings
-  const warningBox = document.getElementById('final-warning');
   if (warnings.length > 0) {
-    document.getElementById('final-warning-text').innerHTML = warnings.join('<br>• ');
-    warningBox.classList.add('visible');
+    DOM.finalWarningText.innerHTML = warnings.join('<br>• ');
+    DOM.finalWarning.classList.add('visible');
   } else {
-    warningBox.classList.remove('visible');
+    DOM.finalWarning.classList.remove('visible');
   }
 
-  document.getElementById('match-screen').classList.add('visible'); 
+  DOM.matchScreen.classList.add('visible'); 
 }
 
+// Boot up
 hardReset();
 </script>
 
