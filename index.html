@@ -220,6 +220,540 @@
     if (key === 'cal') return `${val} kcal`;
     if (key === 'caf') return `${val}mg caf`;
     return `${val}`;
+  }
+
+  function getVisualUnit(val, key) {
+    if (key === 'sugar') return `${Math.round(val / 4)} tsp sugar`;
+    if (key === 'fat') return `${Math.round(val / 14)} tbsp fat`;
+    if (key === 'sod') return `${Math.round(val / 2300 * 100)}% daily salt`;
+    if (key === 'cal') return `${val} kcal`;
+    if (key === 'caf') return `${val}mg caf`;
+    return `${val}`;
+}
+// Cache DOM Elements to prevent layout thrashing
+const DOM = {
+  filterBar: document.getElementById('filter-bar'),
+  deckSelect: document.getElementById('deck-select'),
+  moodSelect: document.getElementById('mood-select'),
+  cardStage: document.getElementById('card-stage'),
+  actionButtons: document.getElementById('action-buttons'), // Cached Action Buttons
+  card: document.getElementById('card'),
+  voteYes: document.getElementById('vote-yes'),
+  voteNope: document.getElementById('vote-nope'),
+  draftPrompt: document.getElementById('draft-prompt-screen'),
+  nutritionWarning: document.getElementById('nutrition-warning'),
+  warningText: document.getElementById('warning-text'),
+  matchScreen: document.getElementById('match-screen'),
+  finalSpread: document.getElementById('final-spread'),
+  receiptRows: document.getElementById('receipt-rows'),
+  finalWarning: document.getElementById('final-warning'),
+  finalWarningText: document.getElementById('final-warning-text'),
+  draftTray: document.getElementById('draft-tray-container'),
+  draftCounter: document.getElementById('draft-counter'),
+  slots: [
+    document.getElementById('slot-0'),
+    document.getElementById('slot-1'),
+    document.getElementById('slot-2')
+  ]
+};
+
+const LIMITS = { cal: 2000, sugar: 25, sod: 2000, fat: 20, caf: 400 };
+
+function getLevel(val, limit) {
+  const pct = val / limit;
+  if (pct < 0.15) return 'low';
+  if (pct < 0.40) return 'mid';
+  return 'high';
+}
+
+const DATABASE = [
+  { id: "es_kopi_susu", name: "Es Kopi Susu", category: "moodbooster", temp: "cold", bg: "#bfdbfe", emoji: "🥤", 
+    blurb: "Stamina potion for the modern worker.", nutri: { cal: 220, sugar: 20, sod: 50, fat: 8, caf: 120 } }, 
+  { id: "brownie", name: "Fudge Brownie", category: "comfort", temp: "warm", bg: "#fef08a", emoji: "🍫", 
+    blurb: "Dense. Serious. No notes.", nutri: { cal: 350, sugar: 30, sod: 150, fat: 18, caf: 10 } }, 
+  { id: "spicy_ramen", name: "Spicy Ramen", category: "comfort", temp: "hot", bg: "#fee2e2", emoji: "🍜", 
+    blurb: "Blinds you to your problems via capsaicin.", nutri: { cal: 450, sugar: 4, sod: 1800, fat: 16, caf: 0 } }, 
+  { id: "iced_americano", name: "Iced Americano", category: "moodbooster", temp: "cold", bg: "#bfdbfe", emoji: "🧊", 
+    blurb: "Tastes like productivity and mild anxiety.", nutri: { cal: 10, sugar: 0, sod: 10, fat: 0, caf: 150 } }, 
+  { id: "matcha_latte", name: "Matcha Latte", category: "moodbooster", temp: "warm", bg: "#fef08a", emoji: "🍵", 
+    blurb: "A little earthy, a little self-satisfied.", nutri: { cal: 180, sugar: 12, sod: 80, fat: 6, caf: 70 } }, 
+  { id: "bakso", name: "Bakso", category: "comfort", temp: "hot", bg: "#fee2e2", emoji: "🍲", 
+    blurb: "A warm hug in a bowl.", nutri: { cal: 380, sugar: 2, sod: 1200, fat: 14, caf: 0 } }, 
+  { id: "fruit_boba", name: "Fruit Boba", category: "moodbooster", temp: "refreshing", bg: "#99f6e4", emoji: "🧋", 
+    blurb: "Colorful and chaotic.", nutri: { cal: 280, sugar: 35, sod: 20, fat: 0, caf: 40 } }, 
+  { id: "dark_choc", name: "Dark Chocolate", category: "moodbooster", temp: "neutral", bg: "#f4f4f5", emoji: "🍫", 
+    blurb: "Just quietly excellent.", nutri: { cal: 150, sugar: 6, sod: 5, fat: 10, caf: 20 } } 
+];
+
+let deck = [];
+let draftedCards = [];   
+let dragActive = false;
+let startX = 0, startY = 0, curX = 0, curY = 0;
+let animating = false;
+
+function shuffle(arr) { return [...arr].sort(() => Math.random() - 0.5); }
+
+function hardReset() {
+  draftedCards = [];
+  DOM.filterBar.classList.remove('locked');
+  DOM.deckSelect.disabled = false;
+  DOM.moodSelect.disabled = false;
+  
+  DOM.slots.forEach(slot => {
+    slot.className = 'draft-slot';
+    slot.innerHTML = ''; 
+    slot.style.background = '#fff';
+  });
+  
+  DOM.draftCounter.textContent = `0 / 3`;
+  DOM.draftTray.style.display = 'block';
+  DOM.actionButtons.style.display = 'flex'; // Ensure buttons are visible
+  
+  const cat = DOM.deckSelect.value;
+  let pool = cat === 'all' ? DATABASE : DATABASE.filter(item => item.category === cat);
+  deck = shuffle([...pool]); 
+  
+  drawNewHand();
+}
+
+function drawNewHand() {
+  DOM.draftPrompt.classList.remove('visible');
+  DOM.matchScreen.classList.remove('visible');
+  DOM.cardStage.style.display = 'flex';
+  renderTopCard();
+}
+
+function renderTopCard() {
+  if (deck.length === 0) deck = shuffle([...DATABASE]); 
+  
+  const item = deck[deck.length - 1];
+  DOM.card.style.transform = ''; 
+  DOM.card.style.transition = ''; 
+  DOM.card.style.opacity = '1';
+  DOM.card.style.background = item.bg;
+  
+  // Trigger the gentle nudge animation
+  DOM.card.classList.remove('nudge');
+  void DOM.card.offsetWidth; // Trigger reflow to restart animation
+  DOM.card.classList.add('nudge');
+
+  const labels = { cal: 'Cal', sugar: 'Sugar', sod: 'Salt', fat: 'Fat', caf: 'Caf' };
+  const pillsHtml = Object.entries(item.nutri).map(([key, val]) => {
+    if(val === 0) return ''; 
+    const level = getLevel(val, LIMITS[key]);
+    const visual = getVisualUnit(val, key);
+    
+    return `
+      <div class="nutri-pill">
+        <div style="display: flex; align-items: center; gap: 4px;">
+           <div class="level-dot ${level}"></div> 
+           <span class="nutri-value-primary">${visual}</span>
+        </div>
+        <span class="nutri-value-secondary">${val}${key === 'sod' ? 'mg' : 'g'}</span>
+      </div>`;
+  }).join('');
+
+
+  DOM.card.innerHTML = `
+    <div class="card-header">
+      <div class="card-emoji">${item.emoji}</div>
+      <div class="card-name">${item.name}</div>
+      <div class="nutrition-pills">${pillsHtml}</div>
+    </div>
+    <div class="card-footer">"${item.blurb}"</div>
+  `;
+}
+
+// Physics & Event Listeners
+function dragStart(e) { 
+  if (animating) return;
+  dragActive = true; 
+  
+  // Stop the nudge animation if the user touches the card
+  DOM.card.classList.remove('nudge');
+  
+  const t = e.touches ? e.touches[0] : e; 
+  startX = t.clientX; startY = t.clientY; curX = 0; curY = 0; 
+  document.addEventListener('mousemove', dragMove); 
+  document.addEventListener('touchmove', dragMove, {passive: false}); 
+  document.addEventListener('mouseup', dragEnd); 
+  document.addEventListener('touchend', dragEnd); 
+}
+
+function dragMove(e) { 
+  if(!dragActive) return; 
+  if (e.cancelable) e.preventDefault();
+  
+  const t = e.touches ? e.touches[0] : e; 
+  curX = t.clientX - startX; 
+  curY = t.clientY - startY; 
+  
+  DOM.card.style.transform = `translate3d(${curX}px, ${curY*0.3}px, 0) rotate(${curX*0.08}deg)`; 
+  
+  if (curX > 60) { 
+    DOM.voteYes.style.opacity = Math.min((curX - 60)/60, 1); 
+    DOM.voteNope.style.opacity = 0; 
+  } else if (curX < -60) { 
+    DOM.voteNope.style.opacity = Math.min((-curX - 60)/60, 1); 
+    DOM.voteYes.style.opacity = 0; 
+  } else { 
+    DOM.voteYes.style.opacity = 0; 
+    DOM.voteNope.style.opacity = 0; 
+  }
+}
+
+function dragEnd() { 
+  dragActive = false; 
+  document.removeEventListener('mousemove', dragMove); 
+  document.removeEventListener('touchmove', dragMove); 
+  document.removeEventListener('mouseup', dragEnd); 
+  document.removeEventListener('touchend', dragEnd); 
+  
+  if(Math.abs(curX) > 100) swipeCard(curX > 0 ? 'right' : 'left'); 
+  else { 
+    DOM.card.style.transition = 'transform 0.3s'; 
+    DOM.card.style.transform = ''; 
+    DOM.voteYes.style.opacity = 0; 
+    DOM.voteNope.style.opacity = 0;
+  } 
+}
+
+function swipeCard(dir) {
+  if (animating) return;
+  animating = true;
+  DOM.card.style.transition = 'transform 0.4s, opacity 0.3s';
+  DOM.card.style.transform = `translate3d(${dir==='right'?500:-500}px, ${curY}px, 0) rotate(${dir==='right'?30:-30}deg)`;
+  DOM.card.style.opacity = '0';
+  
+  // Hide UI hints if triggered via button click
+  DOM.voteYes.style.opacity = 0; 
+  DOM.voteNope.style.opacity = 0;
+
+  setTimeout(() => {
+    const item = deck.pop();
+    if (dir === 'right') handleDraft(item);
+    else renderTopCard();
+    animating = false;
+  }, 300);
+}
+
+function getNutritionStatus() {
+  const totals = { cal: 0, sugar: 0, sod: 0, fat: 0, caf: 0 };
+  draftedCards.forEach(item => Object.keys(totals).forEach(k => totals[k] += item.nutri[k]));
+
+  let warnings = [];
+  if (totals.sugar > LIMITS.sugar * 0.8) warnings.push(`Sugar is high (${totals.sugar}g). Watch out for the crash.`);
+  if (totals.sod > LIMITS.sod * 0.8) warnings.push(`Sodium is high (${totals.sod}mg). Hydrate well.`);
+  if (totals.caf > LIMITS.caf * 0.8) warnings.push(`Caffeine is high (${totals.caf}mg). Heart rates might spike.`);
+  if (totals.fat > LIMITS.fat * 0.8) warnings.push(`Sat. fat is high (${totals.fat}g). This is a heavy combo.`);
+  
+  return { totals, warnings };
+}
+
+function handleDraft(item) {
+  draftedCards.push(item);
+  const slotIndex = draftedCards.length - 1;
+  
+  if (draftedCards.length === 1) DOM.filterBar.classList.add('locked');
+
+  DOM.draftCounter.textContent = `${draftedCards.length} / 3`;
+  const slot = DOM.slots[slotIndex];
+  slot.classList.add('filled'); 
+  slot.style.background = item.bg;
+  slot.innerHTML = `<div class="slot-emoji">${item.emoji}</div>`;
+
+  DOM.cardStage.style.display = 'none';
+  DOM.actionButtons.style.display = 'none'; // Hide buttons on prompt screen
+  
+  if (draftedCards.length === 3) finishDraft();
+  else {
+      const { warnings } = getNutritionStatus();
+      if (warnings.length > 0) {
+        DOM.warningText.innerHTML = warnings.join('<br>• ');
+        DOM.nutritionWarning.classList.add('visible');
+      } else {
+        DOM.nutritionWarning.classList.remove('visible');
+      }
+      DOM.draftPrompt.classList.add('visible');
+  }
+}
+
+function resumeDraft() { 
+  DOM.draftPrompt.classList.remove('visible'); 
+  DOM.cardStage.style.display = 'flex'; 
+  DOM.actionButtons.style.display = 'flex'; // Bring buttons back
+  renderTopCard(); 
+}
+
+function finishDraft() {DOM.draftPrompt.classList.remove('visible'); 
+  DOM.cardStage.style.display = 'none';
+  DOM.draftTray.style.display = 'none';
+  
+  // Render visual cards
+  DOM.finalSpread.innerHTML = draftedCards.map(item => `
+    <div class="final-card" style="background: ${item.bg}">
+      <div class="final-card-emoji">${item.emoji}</div>
+      <div class="final-card-name">${item.name}</div>
+    </div>
+  `).join('');
+
+  // Render "Receipt" with dual-labels
+  const { totals, warnings } = getNutritionStatus();
+  const formatKey = { cal: 'Calories', sugar: 'Sugar', sod: 'Salt', fat: 'Sat. Fat', caf: 'Caffeine' };
+  
+  DOM.receiptRows.innerHTML = Object.entries(totals).map(([key, val]) => {
+      const isHigh = val > LIMITS[key] * 0.8;
+      const colorStyle = isHigh ? 'color: #dc2626;' : '';
+      const visual = getVisualUnit(val, key);
+      
+      return `
+        <div class="receipt-row" style="${colorStyle}">
+          <span>${formatKey[key]}</span>
+          <div style="text-align: right;">
+            <div style="font-size: 14px;">${visual}</div>
+            <div style="font-size: 9px; opacity: 0.7;">(${val}${key === 'sod' ? 'mg' : 'g'})</div>
+          </div>
+        </div>`;
+  }).join('');
+
+  if (warnings.length > 0) {
+    DOM.finalWarningText.innerHTML = warnings.join('<br>• ');
+    DOM.finalWarning.classList.add('visible');
+  } else {
+    DOM.finalWarning.classList.remove('visible');
+  }
+
+  DOM.matchScreen.classList.add('visible');
+}
+
+// Boot up
+hardReset();
+</script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Mindful Swiper - Sketchbook Edition</title>
+<link href="https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Nunito:ital,wght@0,500;0,700;1,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+<style>
+  :root {
+    --font-sketch: 'Kalam', cursive;
+    --font-body: 'Nunito', sans-serif;
+    --color-paper: #fdfaf5;
+    --color-ink: #1c1c1c;
+    --color-ink-light: #5a5a5a;
+    --color-border: #1c1c1c;
+    
+    --sketch-radius: 8px 24px 12px 24px / 24px 8px 24px 12px;
+    --sketch-shadow: 4px 4px 0px rgba(0,0,0,0.8);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--font-body); background: var(--color-paper); overflow: hidden; overscroll-behavior-y: contain; color: var(--color-ink); }
+
+  .app { max-width: 400px; margin: 0 auto; padding: 24px 16px 32px; height: 100dvh; display: flex; flex-direction: column; align-items: center; }
+
+  /* Filters */
+  .filter-bar { width: 100%; display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px dashed var(--color-ink-light); transition: opacity 0.3s; }
+  .filter-bar.locked { opacity: 0.4; pointer-events: none; }
+  .filter-row { display: flex; justify-content: space-between; align-items: center; }
+  .filter-label { font-family: var(--font-sketch); font-size: 16px; font-weight: 700; color: var(--color-ink-light); }
+  .filter-select { border: 2px solid var(--color-border); border-radius: var(--sketch-radius); background: #fff; font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--color-ink); outline: none; cursor: pointer; padding: 4px 8px; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
+
+  /* Card Stage */
+  .card-stage { width: 100%; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1000px; margin-bottom: 12px; }
+  
+  .card-ghost { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); background: #fff; border: 2px solid var(--color-border); transform: scale(0.95) translateY(10px); opacity: 0.4; }
+  .card-ghost-2 { transform: scale(0.9) translateY(20px); opacity: 0.2; }
+  
+  .card { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); cursor: grab; user-select: none; will-change: transform; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sketch-shadow); border: 2px solid var(--color-border); touch-action: none; z-index: 2; background: #fff; }
+  .card:active { cursor: grabbing; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
+
+  /* NEW: Introductory Nudge Animation */
+  @keyframes nudgeHint {
+    0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
+    20% { transform: translate3d(15px, -5px, 0) rotate(3deg); }
+    40% { transform: translate3d(-15px, -5px, 0) rotate(-3deg); }
+    60% { transform: translate3d(8px, -2px, 0) rotate(1deg); }
+    80% { transform: translate3d(-8px, -2px, 0) rotate(-1deg); }
+  }
+  .nudge { animation: nudgeHint 1.2s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s; }
+
+  /* Card Details */
+  .card-header { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; padding: 20px; position: relative; }
+  .card-emoji { position: absolute; top: 20px; right: 20px; font-size: 56px; line-height: 1; filter: drop-shadow(2px 2px 0px rgba(0,0,0,0.2)); }
+  .card-name { font-family: var(--font-sketch); font-size: 32px; font-weight: 700; line-height: 1.1; margin-bottom: 12px; }
+  
+  /* Nutrition Mini UI */
+  .nutrition-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .nutri-pill { 
+    font-size: 11px; 
+    padding: 4px 10px; 
+    border-radius: var(--sketch-radius); 
+    background: #fff; 
+    border: 1.5px solid var(--color-border); 
+    font-weight: 700; 
+    display: flex; 
+    flex-direction: column; /* Changed to column to stack labels */
+    align-items: center; 
+    gap: 2px; 
+    box-shadow: 1px 1px 0px var(--color-ink); 
+  }
+  
+  .nutri-value-primary { font-size: 12px; } /* The "Tablespoon" visual */
+  .nutri-value-secondary { font-size: 9px; opacity: 0.6; } /* The "g/mg" technical */
+  .level-dot.low { background: #4ade80; }
+  .level-dot.mid { background: #facc15; }
+  .level-dot.high { background: #f87171; }
+
+  .card-footer { background: rgba(255,255,255,0.7); border-top: 2px dashed var(--color-border); padding: 16px 20px; font-size: 14px; line-height: 1.4; font-style: italic; font-weight: 500; }
+
+  /* Hints */
+  .vote-hint { position: absolute; top: 20px; padding: 8px 16px; border-radius: var(--sketch-radius); font-family: var(--font-sketch); font-size: 24px; font-weight: 700; pointer-events: none; opacity: 0; border: 3px solid; box-shadow: var(--sketch-shadow); background: #fff; z-index: 10;}
+  .vote-hint.yes { left: 20px; color: #16a34a; border-color: #16a34a; transform: rotate(-10deg); }
+  .vote-hint.nope { right: 20px; color: #dc2626; border-color: #dc2626; transform: rotate(10deg); }
+
+  /* NEW: Minimalist Action Buttons */
+  .action-buttons { display: flex; gap: 24px; justify-content: center; margin-bottom: 16px; z-index: 10; width: 100%; }
+  .action-btn { width: 56px; height: 56px; border-radius: 50%; border: 2px solid var(--color-border); background: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: var(--sketch-shadow); transition: transform 0.1s, box-shadow 0.1s; font-size: 28px; color: var(--color-ink); }
+  .action-btn:active { box-shadow: 1px 1px 0px rgba(0,0,0,0.8); transform: translateY(3px); }
+  .action-btn.pass { color: #dc2626; }
+  .action-btn.take { color: #16a34a; }
+
+  /* Screens */
+  .screen { display: none; flex-direction: column; align-items: center; justify-content: center; flex: 1; width: 100%; padding: 0 10px; margin-bottom: 24px; overflow-y: auto; }
+  .screen.visible { display: flex; }
+  .screen-title { font-family: var(--font-sketch); font-size: 28px; font-weight: 700; margin-bottom: 8px; text-align: center; }
+  .screen-sub { font-size: 15px; color: var(--color-ink-light); margin-bottom: 16px; text-align: center; }
+
+  /* Warnings & Receipts */
+  .warning-box { width: 100%; background: #fee2e2; border: 2px solid #dc2626; color: #991b1b; padding: 16px; border-radius: var(--sketch-radius); font-size: 13px; font-weight: 700; margin-bottom: 16px; display: none; box-shadow: var(--sketch-shadow); }
+  .warning-box.visible { display: block; }
+  .warning-title { font-family: var(--font-sketch); font-size: 20px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+
+  .receipt-box { width: 100%; background: #fff; border: 2px solid var(--color-border); padding: 16px; border-radius: 8px; margin-bottom: 24px; box-shadow: var(--sketch-shadow); position: relative; }
+  .receipt-box::before { content: ''; position: absolute; top: -10px; left: 0; right: 0; height: 10px; background-image: radial-gradient(circle, transparent 4px, #fff 4px); background-size: 12px 20px; }
+  .receipt-row { display: flex; justify-content: space-between; font-size: 14px; font-weight: 700; border-bottom: 1px dashed var(--color-ink-light); padding: 6px 0; }
+  .receipt-row:last-child { border-bottom: none; }
+
+  .final-spread { display: flex; gap: 10px; justify-content: center; width: 100%; margin-bottom: 20px; }
+  .final-card { flex: 1; max-width: 100px; background: #fff; border: 2px solid var(--color-border); border-radius: var(--sketch-radius); padding: 10px; text-align: center; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); display: flex; flex-direction: column; align-items: center; }
+  .final-card-emoji { font-size: 32px; margin-bottom: 4px; }
+  .final-card-name { font-family: var(--font-sketch); font-size: 14px; font-weight: 700; line-height: 1.1; }
+
+  /* Buttons */
+  .btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+  .btn { padding: 0 24px; min-height: 54px; border-radius: var(--sketch-radius); font-family: var(--font-sketch); font-size: 20px; font-weight: 700; border: 2px solid var(--color-border); cursor: pointer; background: var(--color-paper); color: var(--color-ink); box-shadow: var(--sketch-shadow); transition: all 0.1s; }
+  .btn:active { box-shadow: 1px 1px 0px rgba(0,0,0,0.8); transform: translateY(3px); }
+  .btn.primary { background: #fef08a; }
+
+  /* Draft Tray */
+  .draft-tray-container { width: 100%; padding-top: 16px; border-top: 2px dashed var(--color-ink-light); }
+  .draft-header { display: flex; justify-content: space-between; font-family: var(--font-sketch); font-size: 16px; font-weight: 700; color: var(--color-ink-light); margin-bottom: 8px; }
+  .draft-slots { display: flex; gap: 12px; width: 100%; }
+  .draft-slot { flex: 1; height: 70px; border-radius: var(--sketch-radius); border: 2px dashed var(--color-ink-light); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; background: #fff; }
+  .draft-slot.filled { opacity: 1; border: 2px solid var(--color-border); box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
+  .slot-emoji { font-size: 32px; line-height: 1; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div id="filter-bar" class="filter-bar">
+    <div class="filter-row">
+      <span class="filter-label">I'm offering:</span>
+      <select id="deck-select" class="filter-select" onchange="hardReset()">
+        <option value="all">Anything</option>
+        <option value="moodbooster">Moodboosters ⚡</option>
+        <option value="comfort">Comfort Grub 🍲</option>
+      </select>
+    </div>
+    <div class="filter-row">
+      <span class="filter-label">Your Mood:</span>
+      <select id="mood-select" class="filter-select" onchange="hardReset()">
+        <option value="any">Just browsing</option>
+        <option value="tired">Low Energy</option>
+        <option value="treat">Treat Myself</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="card-stage" class="card-stage">
+    <div class="card-ghost card-ghost-2"></div>
+    <div class="card-ghost"></div>
+    <div id="vote-yes" class="vote-hint yes">Yup!</div>
+    <div id="vote-nope" class="vote-hint nope">Nah</div>
+    <div id="card" class="card" onmousedown="dragStart(event)" ontouchstart="dragStart(event)"></div>
+  </div>
+
+  <div id="action-buttons" class="action-buttons">
+      <button class="action-btn pass" onclick="swipeCard('left')" aria-label="Pass">
+          <i class="ti ti-x"></i>
+      </button>
+      <button class="action-btn take" onclick="swipeCard('right')" aria-label="Take it">
+          <i class="ti ti-check"></i>
+      </button>
+  </div>
+
+  <div id="draft-prompt-screen" class="screen">
+    <div class="screen-title">Item Added!</div>
+    <div class="screen-sub">You can hold up to 3 items.</div>
+    
+    <div id="nutrition-warning" class="warning-box">
+      <div class="warning-title"><i class="ti ti-alert-triangle"></i> Heads Up!</div>
+      <div id="warning-text"></div>
+    </div>
+
+    <div class="btn-group">
+        <button class="btn primary" onclick="finishDraft()">Lock it in</button>
+        <button class="btn" onclick="resumeDraft()">Keep Drawing</button>
+    </div>
+  </div>
+
+  <div id="match-screen" class="screen">
+    <div class="screen-title">Your Final Loadout</div>
+    
+    <div id="final-spread" class="final-spread"></div>
+
+    <div id="final-receipt" class="receipt-box">
+        <div class="warning-title" style="margin-bottom: 12px;">Nutrition Summary</div>
+        <div id="receipt-rows"></div>
+    </div>
+
+    <div id="final-warning" class="warning-box">
+      <div class="warning-title"><i class="ti ti-alert-triangle"></i> Notice</div>
+      <div id="final-warning-text"></div>
+    </div>
+
+    <div class="btn-group" style="margin-top: auto;">
+        <button class="btn primary" onclick="hardReset()">Start Over ↺</button>
+    </div>
+  </div>
+
+  <div id="draft-tray-container" class="draft-tray-container">
+    <div class="draft-header"><span>Your Stash</span><span id="draft-counter">0 / 3</span></div>
+    <div class="draft-slots">
+        <div class="draft-slot" id="slot-0"></div>
+        <div class="draft-slot" id="slot-1"></div>
+        <div class="draft-slot" id="slot-2"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+
+  function getVisualUnit(val, key) {
+    if (key === 'sugar') return `${Math.round(val / 4)} tsp sugar`;
+    if (key === 'fat') return `${Math.round(val / 14)} tbsp fat`;
+    if (key === 'sod') return `${Math.round(val / 2300 * 100)}% daily salt`;
+    if (key === 'cal') return `${val} kcal`;
+    if (key === 'caf') return `${val}mg caf`;
+    return `${val}`;
 }
 // Cache DOM Elements to prevent layout thrashing
 const DOM = {
