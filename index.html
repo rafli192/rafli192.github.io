@@ -31,6 +31,9 @@
     overflow-y: auto; 
     /* Forces the screen to shrink if it doesn't fit */
     flex-shrink: 1;
+    overflow-y: auto;        /* Allows scrolling */
+    justify-content: flex-start; /* Keeps content at top if it overflows */
+    min-height: 0;           /* Crucial: Allows flex-items to shrink */
   }
 
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -58,12 +61,30 @@
   .filter-select { border: 2px solid var(--color-border); border-radius: var(--sketch-radius); background: #fff; font-family: var(--font-body); font-size: 14px; font-weight: 700; color: var(--color-ink); outline: none; cursor: pointer; padding: 4px 8px; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
 
   /* Card Stage */
-  .card-stage { width: 100%; position: relative; flex: 1; display: flex; align-items: center; justify-content: center; perspective: 1000px; margin-bottom: 12px; }
+  .card-stage { width: 100%; 
+    position: relative; 
+    flex: 1; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    perspective: 1000px; 
+    margin-bottom: 12px; 
+    min-height: 300px; }
   
-  .card-ghost { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); background: #fff; border: 2px solid var(--color-border); transform: scale(0.95) translateY(10px); opacity: 0.4; }
+  .card-ghost { width: 90%; 
+    max-width: 290px;
+    height: 85%; 
+    max-height: 400px;
+    border-radius: var(--sketch-radius); background: #fff; border: 2px solid var(--color-border); transform: scale(0.95) translateY(10px); opacity: 0.4; }
   .card-ghost-2 { transform: scale(0.9) translateY(20px); opacity: 0.2; }
   
-  .card { position: absolute; width: 290px; height: 420px; border-radius: var(--sketch-radius); cursor: grab; user-select: none; will-change: transform; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sketch-shadow); border: 2px solid var(--color-border); touch-action: none; z-index: 2; background: #fff; }
+  .card { position: absolute; 
+    width: 90%; /* Responsive width */
+    max-width: 290px;
+    height: 85%; /* Use percentage instead of pixels */
+    max-height: 400px; /* Cap it so it doesn't get distortedly tall */
+    border-radius: var(--sketch-radius);
+    cursor: grab; user-select: none; will-change: transform; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--sketch-shadow); border: 2px solid var(--color-border); touch-action: none; z-index: 2; background: #fff; }
   .card:active { cursor: grabbing; box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
 
   /* NEW: Introductory Nudge Animation */
@@ -155,6 +176,15 @@
   .draft-slot { flex: 1; height: 70px; border-radius: var(--sketch-radius); border: 2px dashed var(--color-ink-light); display: flex; flex-direction: column; align-items: center; justify-content: center; opacity: 0.5; background: #fff; }
   .draft-slot.filled { opacity: 1; border: 2px solid var(--color-border); box-shadow: 2px 2px 0px rgba(0,0,0,0.8); }
   .slot-emoji { font-size: 32px; line-height: 1; }
+
+  @media (max-height: 600px) {
+  .app { padding: 10px; }
+  .card, .card-ghost { height: 75%; max-height: 320px; }
+  .filter-bar { margin-bottom: 12px; }
+  .card-name { font-size: 24px; }
+  .action-buttons { gap: 16px; margin-bottom: 8px; }
+  .action-btn { width: 48px; height: 48px; }
+}
 </style>
 </head>
 <body>
